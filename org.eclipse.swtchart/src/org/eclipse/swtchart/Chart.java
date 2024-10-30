@@ -49,51 +49,64 @@ import org.eclipse.swtchart.internal.series.SeriesSet;
  */
 public class Chart extends Composite implements Listener {
 
-	/** the title */
-	private final Title title;
-	/** the legend */
-	private final Legend legend;
-	/** the set of axes */
-	private final AxisSet axisSet;
-	/** the plot area */
-	private IPlotArea plotArea;
-	/** the orientation of chart which can be horizontal or vertical */
-	private int orientation;
-	/** the state indicating if compressing series is enabled */
-	private boolean compressEnabled;
-	/** the state indicating if the update of chart appearance is suspended */
-	private boolean updateSuspended;
-	/** the set of plots */
+	/**
+	 * Suppress to update the axis position marker on mouse move.
+	 */
+	public static final int NO_AXIS_POSITION_UPDATE = 1 << 30; // TRANSPARENT is not used by Composite style.
+	/*
+	 * Data Series
+	 */
 	protected SeriesSet seriesSet;
+	//
+	private final Title title;
+	private final Legend legend;
+	private final AxisSet axisSet;
+	private IPlotArea plotArea;
+	private int orientation; // SWT.HORIZONTAL or SWT.VERTICAL
+	private boolean compressEnabled;
+	private boolean updateSuspended;
 	//
 	private final List<PaintListener> paintListener = new ArrayList<>();
 
-	/**
-	 * Constructor.
-	 * 
-	 * @param parent
-	 *            the parent composite on which chart is placed
-	 * @param style
-	 *            the style of widget to construct
-	 */
 	public Chart(Composite parent, int style) {
 
 		this(parent, style, null);
-		new PlotArea(this, SWT.NONE);
+		plotArea = new PlotArea(this, SWT.NONE);
 		/*
 		 * Mouse Move Position Marker
+		 * ---
+		 * NO_AXIS_POSITION_UPDATE must none of the below listed constants
+		 * ----------------------------------------
+		 * org.eclipse.swt.widgets.Composite
+		 * ----------------------------------------
+		 * None = 0; // Widget
+		 * UP = 1 << 7;
+		 * H_SCROLL = 1 << 8; // Scrollable
+		 * V_SCROLL = 1 << 9; // Scrollable
+		 * BORDER = 1 << 11; // Control
+		 * NO_BACKGROUND = 1 << 18;
+		 * NO_FOCUS = 1 << 19;
+		 * NO_REDRAW_RESIZE = 1 << 20;
+		 * NO_MERGE_PAINTS = 1 << 21;
+		 * NO_RADIO_GROUP = 1 << 22;
+		 * EMBEDDED = 1 << 24;
+		 * LEFT_TO_RIGHT = 1 << 25; // Control
+		 * RIGHT_TO_LEFT = 1 << 26; // Control
+		 * DOUBLE_BUFFERED = 1 << 29;
 		 */
-		plotArea.addMouseMoveListener(new MouseMoveListener() {
+		if(!((style & NO_AXIS_POSITION_UPDATE) == NO_AXIS_POSITION_UPDATE)) {
+			plotArea.addMouseMoveListener(new MouseMoveListener() {
 
-			@Override
-			public void mouseMove(MouseEvent e) {
+				@Override
+				public void mouseMove(MouseEvent e) {
 
-				for(IAxis axis : axisSet.getAxes()) {
-					axis.updatePositionMarker(e);
+					for(IAxis axis : axisSet.getAxes()) {
+						axis.updatePositionMarker(e);
+					}
+					redraw();
 				}
-				redraw();
-			}
-		});
+			});
+		}
 		setData("org.eclipse.e4.ui.css.CssClassName", "Chart");
 	}
 
