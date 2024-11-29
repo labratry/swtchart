@@ -14,10 +14,12 @@ package org.eclipse.swtchart.extensions.events;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swtchart.IAxis;
+import org.eclipse.swtchart.IAxisSet;
 import org.eclipse.swtchart.extensions.core.BaseChart;
 import org.eclipse.swtchart.extensions.support.RangeSupport;
 
-public class MouseWheelSlideXEvent extends AbstractMouseEvent {
+public class MouseWheelEventX extends AbstractMouseEvent {
 
 	@Override
 	public int getStateMask() {
@@ -27,6 +29,18 @@ public class MouseWheelSlideXEvent extends AbstractMouseEvent {
 
 	protected void runAction(BaseChart baseChart, Event event) {
 
-		RangeSupport.applyHorizontalSlide(baseChart, 0.1d, event.count < 0);
+		if((event.stateMask & SWT.MOD3) == SWT.MOD3) {
+			/*
+			 * Zoom in/out X
+			 */
+			IAxisSet axisSet = baseChart.getAxisSet();
+			IAxis xAxis = axisSet.getXAxis(BaseChart.ID_PRIMARY_X_AXIS);
+			baseChart.zoomX(xAxis, event);
+		} else {
+			/*
+			 * Slide X
+			 */
+			RangeSupport.applyHorizontalSlide(baseChart, 0.1d, event.count < 0);
+		}
 	}
 }
