@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2023 SWTChart project.
+ * Copyright (c) 2008, 2024 SWTChart project.
  *
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
@@ -94,7 +94,16 @@ public class Axis implements IAxis {
 	private int height;
 	/** draw the horizontal|vertical axis line */
 	private boolean drawAxisLine;
-	//
+	/**
+	 * The minimum value allowed for the axis. Initialized to the smallest possible value for a double.
+	 */
+	private double minRange = -Double.MAX_VALUE;
+	/**
+	 * The maximum value allowed for the axis. Initialized to the largest possible value for a double.
+	 */
+	private double maxRange = Double.MAX_VALUE;
+	// The padding ratio to be zoomed when reached limit
+	private static final double PADDING_RATIO = 0.01;
 	/** the list of dispose listeners */
 	private List<IDisposeListener> listeners;
 
@@ -383,6 +392,9 @@ public class Axis implements IAxis {
 				minimum -= margin;
 				maximum += margin;
 			}
+			// Clamp the values to minRange and maxRange
+			minimum = Math.max(minRange, minimum);
+			maximum = Math.min(maxRange, maximum);
 			setRange(new Range(minimum, maximum), update);
 		}
 	}
@@ -396,6 +408,9 @@ public class Axis implements IAxis {
 	@Override
 	public void zoomIn(double coordinate) {
 
+		if(coordinate < minRange || coordinate > maxRange) {
+			return;
+		}
 		double lower = min;
 		double upper = max;
 		if(isValidCategoryAxis()) {
@@ -419,6 +434,12 @@ public class Axis implements IAxis {
 			lower = min + 2 * ZOOM_RATIO * (coordinate - min);
 			upper = max + 2 * ZOOM_RATIO * (coordinate - max);
 		}
+		if(lower < minRange) {
+			lower = minRange - PADDING_RATIO * (upper - lower);
+		}
+		if(upper > maxRange) {
+			upper = maxRange + PADDING_RATIO * (upper - lower);
+		}
 		setRange(new Range(lower, upper));
 	}
 
@@ -431,6 +452,9 @@ public class Axis implements IAxis {
 	@Override
 	public void zoomOut(double coordinate) {
 
+		if(coordinate < minRange || coordinate > maxRange) {
+			return;
+		}
 		double lower = min;
 		double upper = max;
 		if(isValidCategoryAxis()) {
@@ -451,6 +475,12 @@ public class Axis implements IAxis {
 		} else {
 			lower = (min - 2 * ZOOM_RATIO * coordinate) / (1 - 2 * ZOOM_RATIO);
 			upper = (max - 2 * ZOOM_RATIO * coordinate) / (1 - 2 * ZOOM_RATIO);
+		}
+		if(lower < minRange) {
+			lower = minRange - PADDING_RATIO * (upper - lower);
+		}
+		if(upper > maxRange) {
+			upper = maxRange + PADDING_RATIO * (upper - lower);
 		}
 		setRange(new Range(lower, upper));
 	}
@@ -474,6 +504,10 @@ public class Axis implements IAxis {
 			lower = min + (max - min) * SCROLL_RATIO;
 			upper = max + (max - min) * SCROLL_RATIO;
 		}
+		if(upper > maxRange) {
+			upper = maxRange + PADDING_RATIO * (upper - lower);
+			lower = upper - (max - min);
+		}
 		setRange(new Range(lower, upper));
 	}
 
@@ -495,6 +529,10 @@ public class Axis implements IAxis {
 		} else {
 			lower = min - (max - min) * SCROLL_RATIO;
 			upper = max - (max - min) * SCROLL_RATIO;
+		}
+		if(lower < minRange) {
+			lower = minRange - PADDING_RATIO * (upper - lower);
+			upper = lower + max - min;
 		}
 		setRange(new Range(lower, upper));
 	}
@@ -820,5 +858,27 @@ public class Axis implements IAxis {
 	public void updatePositionMarker(MouseEvent e) {
 
 		tick.getAxisPositionMarker().update(e.x, e.y);
+	}
+
+	/**
+	 * Sets the minimum and maximum limits for the axis range. These limits
+	 * are enforced during dynamic operations such as {@code adjustRange},
+	 * {@code scroll}, and {@code zoom}. However, they do not restrict
+	 * manual range settings through the {@link #setRange(Range, boolean)} method.
+	 *
+	 * @param minRange
+	 *            the minimum value allowed for the axis range.
+	 * @param maxRange
+	 *            the maximum value allowed for the axis range.
+	 * @throws IllegalArgumentException
+	 *             if {@code minRange} is greater than or equal to {@code maxRange}.
+	 */
+	public void setLimitRange(double minRange, double maxRange) {
+
+		if(minRange >= maxRange) {
+			throw new IllegalArgumentException("minRange must be less than maxRange.");
+		}
+		this.minRange = minRange;
+		this.maxRange = maxRange;
 	}
 }
